@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from src.models.pipeline import Pipeline, PipelineStep # Импорт моделей Pipeline и PipelineStep
+from src.models.pipeline import Pipeline, PipelineStep
 
 def create_pipeline(db: Session, title: str, description: str, created_by: int, is_published: bool) -> Pipeline:
     db_pipeline = Pipeline(
@@ -26,9 +26,6 @@ def add_step_to_pipeline(db: Session, pipeline_id: int, algorithm_id: int, step_
     return db_step
 
 def get_pipeline_details(db: Session, pipeline_id: int) -> Pipeline | None:
-    """
-    Загружает пайплайн вместе с шагами и алгоритмами (joinedload).
-    """
     return (
         db.query(Pipeline)
         .options(

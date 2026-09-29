@@ -3,7 +3,6 @@ from src.database import SessionLocal  # Импорт фабрики сесси�
 from src.crud import user, dataset, algorithm, pipeline, job
 
 def main():
-    # Открываем сессию
     db = SessionLocal()
     
     try:
@@ -36,33 +35,27 @@ def main():
             created_by=client.id, is_published=True
         )
         
-        # Добавляем шаги
         pipeline.add_step_to_pipeline(db, pipeline_id=pipe.id, algorithm_id=algo1.id, step_order=1, step_params={"drop_na": True})
         pipeline.add_step_to_pipeline(db, pipeline_id=pipe.id, algorithm_id=algo2.id, step_order=2, step_params={"epochs": 5})
         
-        # Проверяем joinedload
         pipe_details = pipeline.get_pipeline_details(db, pipe.id)
         print(f"Конвейер '{pipe_details.title}' содержит шагов: {len(pipe_details.steps)}")
         for step in pipe_details.steps:
             print(f"  - Шаг {step.step_order}: {step.algorithm.name} с параметрами {step.step_params}")
 
         print("\n--- 5. Запуск задачи (Job) ---")
-        # Создаем задачу
         new_job = job.create_job(db, user_id=client.id, dataset_id=ds.id, pipeline_id=pipe.id)
         print(f"Задача создана. Статус: {new_job.status}")
 
-        # Переводим в RUNNING (шаг 1)
         job.update_job_status(db, job_id=new_job.id, status="RUNNING", current_step=1)
         print(f"Задача обновлена. Статус: RUNNING, Шаг: 1")
 
-        # Завершаем (COMPLETED) с result_data
         result_payload = {"accuracy": 0.95, "model_path": "/models/model_v1.pkl"}
         job.update_job_status(
             db, job_id=new_job.id, status="COMPLETED", 
             current_step=2, result_data=result_payload
         )
         
-        # Финальная проверка
         final_job = db.query(job.ProcessingJob).filter(job.ProcessingJob.id == new_job.id).first()
         print(f"Задача завершена. Статус: {final_job.status}")
         print(f"Результат (JSON): {json.dumps(final_job.result_data)}")

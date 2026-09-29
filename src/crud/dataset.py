@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from src.models.dataset import Dataset # Импорт модели Dataset
+from src.models.dataset import Dataset
 
 def create_dataset(db: Session, user_id: int, name: str, file_path: str, row_count: int, file_size_bytes: int) -> Dataset:
     db_dataset = Dataset(

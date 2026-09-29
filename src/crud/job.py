@@ -1,12 +1,12 @@
 from sqlalchemy.orm import Session
-from src.models.job import ProcessingJob # Импорт модели ProcessingJob
+from src.models.job import ProcessingJob
 
 def create_job(db: Session, user_id: int, dataset_id: int, pipeline_id: int) -> ProcessingJob:
     db_job = ProcessingJob(
         user_id=user_id,
         dataset_id=dataset_id,
         pipeline_id=pipeline_id,
-        status="PENDING" # Начальный статус
+        status="PENDING"
     )
     db.add(db_job)
     db.commit()
