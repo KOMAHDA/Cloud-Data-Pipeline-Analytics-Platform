@@ -34,3 +34,39 @@ def get_pipeline_details(db: Session, pipeline_id: int) -> Pipeline | None:
         .filter(Pipeline.id == pipeline_id)
         .first()
     )
+
+def get_pipeline_by_id(db: Session, pipeline_id: int) -> Pipeline | None:
+    return db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+
+def get_published_pipelines(db: Session) -> list[Pipeline]:
+    return db.query(Pipeline).filter(Pipeline.is_published == True).all()
+
+def update_pipeline(db: Session, pipeline_id: int, title: str = None, description: str = None, is_published: bool = None) -> Pipeline | None:
+    pipeline = get_pipeline_by_id(db, pipeline_id)
+    if not pipeline:
+        return None
+    if title is not None:
+        pipeline.title = title
+    if description is not None:
+        pipeline.description = description
+    if is_published is not None:
+        pipeline.is_published = is_published
+    db.commit()
+    db.refresh(pipeline)
+    return pipeline
+
+def delete_pipeline(db: Session, pipeline_id: int) -> bool:
+    pipeline = get_pipeline_by_id(db, pipeline_id)
+    if not pipeline:
+        return False
+    db.delete(pipeline)
+    db.commit()
+    return True
+
+def remove_step_from_pipeline(db: Session, step_id: int) -> bool:
+    step = db.query(PipelineStep).filter(PipelineStep.id == step_id).first()
+    if not step:
+        return False
+    db.delete(step)
+    db.commit()
+    return True
