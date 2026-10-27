@@ -43,7 +43,7 @@ def list_algorithms(
 @router.get("/{algorithm_id}", response_model=AlgorithmOut)
 def get_algorithm(algorithm_id: int, user: CurrentUser, db: DbSession):
     """Один алгоритм. 404 если нет или неактивен (и не ADMIN)."""
-    algorithm = db.get(algorithm_crud.model_class, algorithm_id)
+    algorithm = algorithm_crud.get_algorithm_by_id(db, algorithm_id)
     if not algorithm:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Algorithm not found")
     
@@ -78,7 +78,7 @@ def update_algorithm(
 @router.delete("/{algorithm_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_algorithm(algorithm_id: int, _: AdminUser, db: DbSession):
     """Мягкое удаление: is_active=False."""
-    algorithm = db.get(algorithm_crud.model_class, algorithm_id)
+    algorithm = algorithm_crud.get_algorithm_by_id(db, algorithm_id)
     if not algorithm:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Algorithm not found")
     

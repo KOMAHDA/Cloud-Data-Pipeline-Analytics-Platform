@@ -23,7 +23,7 @@ def _validate_steps(db: DbSession, steps: list):
     orders = [s.step_order for s in steps]
     if len(orders) != len(set(orders)):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail="Duplicate step_order values",
         )
     
@@ -33,14 +33,14 @@ def _validate_steps(db: DbSession, steps: list):
     missing = [aid for aid in ids if aid not in algorithms]
     if missing:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail=f"Algorithms not found: {missing}",
         )
     
     inactive = [aid for aid in ids if not algorithms[aid].is_active]
     if inactive:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=422,
             detail=f"Algorithms are inactive: {inactive}",
         )
 
