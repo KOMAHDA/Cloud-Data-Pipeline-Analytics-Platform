@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from src.api.crud_modules import extra_a
+from src.api.crud_modules import extra_a, job_crud
 from src.api.dependencies import AdminUser, DbSession
 from src.api.schemas.job import JobOut, JobStatus, JobStatusUpdate
 
@@ -40,7 +40,11 @@ def update_job_status(
     db: DbSession,
 ):
     """Ручная смена статуса задачи. Временно, пока нет воркера."""
-    job = extra_a.update_job_status(db, job_id, data.status)
+    job = job_crud.update_job_status(
+        db, job_id, data.status,
+        current_step=data.current_step,
+        result_data=data.result_data,
+    )
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
