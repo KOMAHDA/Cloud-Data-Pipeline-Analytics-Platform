@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from src.api.routers import auth
 from src.api.routers import users
 from src.api.routers import datasets
-from src.api.routers import jobs
+from src.api.routers import jobs, admin, algorithms, pipelines
 
 app = FastAPI(
     title="Cloud Data Pipeline & Analytics Platform",
@@ -17,6 +17,9 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(datasets.router)
 app.include_router(jobs.router)
+app.include_router(algorithms.router)
+app.include_router(pipelines.router)
+app.include_router(admin.router)
 
 
 @app.exception_handler(IntegrityError)
