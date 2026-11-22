@@ -19,7 +19,6 @@ def _get_job_or_404(db, job_id: int, user: User, *, owner_only: bool = False):
 
 @router.post("", response_model=JobOut, status_code=status.HTTP_201_CREATED)
 def create_job(data: JobCreate, user: ClientUser, db: DbSession):
-    # В лабе 4 здесь добавится публикация сообщения в RabbitMQ.
     dataset = dataset_crud.get_dataset_by_id(db, data.dataset_id)
     if dataset is None or dataset.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Dataset not found")

@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package analytics;
+
+service AnalyticsService {
+  rpc ExecutePipeline (ExecutePipelineRequest) returns (ExecutePipelineResponse);
+  rpc ValidatePipeline (ValidatePipelineRequest) returns (ValidatePipelineResponse);
+}
+
+message PipelineStepInput {
+  int32 step_order = 1;
+  string algorithm_code = 2;
+  string grpc_handler = 3;
+  string params_json = 4;
+}
+
+message ExecutePipelineRequest {
+  int32 job_id = 1;
+  int32 dataset_id = 2;
+  string dataset_name = 3;
+  string file_path = 4;
+  int32 row_count = 5;
+  repeated PipelineStepInput steps = 6;
+}
+
+message StepExecutionResult {
+  int32 step_order = 1;
+  string algorithm_code = 2;
+  string status = 3;
+  double duration_ms = 4;
+  string metrics_json = 5;
+}
+
+message ExecutePipelineResponse {
+  int32 job_id = 1;
+  string status = 2;
+  int32 completed_steps = 3;
+  string result_json = 4;
+  string error_message = 5;
+  repeated StepExecutionResult step_results = 6;
+}
+
+message ValidatePipelineRequest {
+  repeated PipelineStepInput steps = 1;
+}
+
+message ValidatePipelineResponse {
+  bool is_valid = 1;
+  repeated string errors = 2;
+  repeated string supported_handlers = 3;
+}
