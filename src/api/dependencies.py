@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Annotated
 
 import jwt
@@ -6,6 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from src.api.crud_modules import user_crud
+from src.api.grpc_client import AnalyticsGrpcClient
 from src.api.security import decode_access_token
 from src.api.settings import ROLE_ADMIN, ROLE_CLIENT
 from src.database import get_db
@@ -46,3 +48,12 @@ def require_roles(*roles: str):
 
 AdminUser = Annotated[User, Depends(require_roles(ROLE_ADMIN))]
 ClientUser = Annotated[User, Depends(require_roles(ROLE_CLIENT))]
+
+
+@lru_cache(maxsize=1)
+def get_grpc_client() -> AnalyticsGrpcClient:
+    """Один gRPC-клиент (канал) на процесс; внедряется через Depends."""
+    return AnalyticsGrpcClient()
+
+
+GrpcClient = Annotated[AnalyticsGrpcClient, Depends(get_grpc_client)]
