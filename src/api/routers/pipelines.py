@@ -2,14 +2,15 @@ from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from src.api.crud_modules import extra_a, extra_b
-from src.api.dependencies import AdminUser, CurrentUser, DbSession
+from src.api.crud_modules import extra_a, extra_b, pipeline_crud
+from src.api.dependencies import AdminUser, CurrentUser, DbSession, GrpcClient
 from src.api.schemas.pipeline import (
     PipelineCreate,
     PipelineOut,
     PipelineSummary,
     PipelineUpdate,
 )
+from src.api.schemas.pipeline_validation import PipelineValidationOut
 from src.models.pipeline import Pipeline
 
 router = APIRouter(prefix="/pipelines", tags=["pipelines"])
@@ -187,3 +188,12 @@ def unpublish_pipeline(pipeline_id: int, _: AdminUser, db: DbSession):
     db.commit()
     db.refresh(pipeline)
     return pipeline
+
+
+@router.post("/{pipeline_id}/validate", response_model=PipelineValidationOut)
+def validate_pipeline(pipeline_id: int, user: CurrentUser, db: DbSession, grpc_client: GrpcClient):
+    """Проверить конвейер через gRPC-сервис (ValidatePipeline)."""
+    _get_visible(db, pipeline_id, user)  # 404, если конвейер недоступен пользователю
+    pipeline = pipeline_crud.get_pipeline_details(db, pipeline_id)
+    result = grpc_client.validate_pipeline(pipeline)
+    return PipelineValidationOut(pipeline_id=pipeline.id, **result)

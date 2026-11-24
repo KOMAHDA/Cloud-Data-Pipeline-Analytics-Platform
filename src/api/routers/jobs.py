@@ -1,10 +1,16 @@
+import logging
+
+import grpc
 from fastapi import APIRouter, HTTPException, Query, status
 
 from src.api.crud_modules import dataset_crud, extra_a, job_crud, pipeline_crud
-from src.api.dependencies import ClientUser, CurrentUser, DbSession
+from src.api.dependencies import ClientUser, CurrentUser, DbSession, GrpcClient
+from src.api.grpc_client import rpc_code, rpc_details
 from src.api.schemas.job import JobCreate, JobOut, JobResultOut, JobStatus
 from src.api.settings import ROLE_ADMIN
 from src.models.user import User
+
+logger = logging.getLogger("api.jobs")
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -48,6 +54,57 @@ def list_my_jobs(
 @router.get("/{job_id}", response_model=JobOut)
 def get_job(job_id: int, user: CurrentUser, db: DbSession):
     return _get_job_or_404(db, job_id, user)
+
+
+@router.post("/{job_id}/run", response_model=JobOut)
+def run_job(job_id: int, user: CurrentUser, db: DbSession, grpc_client: GrpcClient):
+    """Запустить задачу (PENDING -> RUNNING -> COMPLETED/FAILED) через gRPC-сервис."""
+    job = _get_job_or_404(db, job_id, user, owner_only=True)
+    if job.status != "PENDING":
+        raise HTTPException(status.HTTP_409_CONFLICT, f"Job is not PENDING (status: {job.status})")
+
+    dataset = dataset_crud.get_dataset_by_id(db, job.dataset_id)
+    if dataset is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Dataset not found")
+    pipeline = pipeline_crud.get_pipeline_details(db, job.pipeline_id)
+    if pipeline is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Pipeline not found")
+
+    job_crud.update_job_status(db, job.id, "RUNNING", current_step=0)
+    logger.info("Job #%s: PENDING -> RUNNING", job.id)
+
+    try:
+        response = grpc_client.execute_pipeline(job, dataset, pipeline)
+    except grpc.RpcError as exc:
+        if rpc_code(exc) == grpc.StatusCode.UNAVAILABLE:
+            # Сервис недоступен, вычисления не начинались: задачу можно перезапустить.
+            job_crud.update_job_status(db, job.id, "PENDING")
+            logger.warning("Job #%s: gRPC unavailable, back to PENDING", job.id)
+        else:
+            job_crud.update_job_status(
+                db, job.id, "FAILED", result_data={"error_message": rpc_details(exc) or str(rpc_code(exc))}
+            )
+            logger.error("Job #%s: gRPC error %s, marked FAILED", job.id, rpc_code(exc))
+        raise  # HTTP-статус выставит обработчик в main.py
+    except Exception as exc:
+        job_crud.update_job_status(db, job.id, "FAILED", result_data={"error_message": str(exc)})
+        logger.exception("Job #%s: unexpected error, marked FAILED", job.id)
+        raise
+
+    if response["status"] == "COMPLETED":
+        updated = job_crud.update_job_status(
+            db, job.id, "COMPLETED",
+            current_step=response["completed_steps"],
+            result_data=response["result"] or {},
+        )
+    else:
+        updated = job_crud.update_job_status(
+            db, job.id, "FAILED",
+            current_step=response["completed_steps"],
+            result_data={"error_message": response["error_message"] or "Pipeline execution failed"},
+        )
+    logger.info("Job #%s: RUNNING -> %s", job.id, updated.status)
+    return updated
 
 
 @router.get("/{job_id}/result", response_model=JobResultOut)
